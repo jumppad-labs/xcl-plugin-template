@@ -9,9 +9,9 @@ tags:
     - template
     - goreleaser
 source:
-    provider: git
+    provider: file
     config:
-        location: git@github.com:jumppad-labs/xcl-plugin-template.git
+        location: ..
 knowledge:
     provider: file
     config:
