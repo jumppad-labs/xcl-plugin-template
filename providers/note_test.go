@@ -2,6 +2,7 @@ package providers_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -392,4 +393,74 @@ func TestDestroyReturnsRemoveError(t *testing.T) {
 	err := provider.Destroy(context.Background(), note, false)
 
 	require.ErrorIs(t, err, removeErr)
+}
+
+// callNoteFilename calls the provider's note_filename function with args, a
+// JSON array holding the title, and returns the result as JSON
+func callNoteFilename(t *testing.T, args string) ([]byte, error) {
+	t.Helper()
+
+	provider := providers.NewNoteProvider(mocks.NewMockFiles(t))
+
+	fn, err := provider.Functions().Get("note_filename")
+	require.NoError(t, err)
+
+	return fn.Call(context.Background(), []byte(args))
+}
+
+func TestNoteFilenameFunctionTurnsTitleIntoFileName(t *testing.T) {
+	result, err := callNoteFilename(t, `["My Greeting"]`)
+	require.NoError(t, err)
+
+	var name string
+	require.NoError(t, json.Unmarshal(result, &name))
+	require.Equal(t, "my-greeting.txt", name)
+}
+
+func TestNoteFilenameFunctionCollapsesPunctuationAndSpaces(t *testing.T) {
+	result, err := callNoteFilename(t, `["  Hello,  World! "]`)
+	require.NoError(t, err)
+
+	var name string
+	require.NoError(t, json.Unmarshal(result, &name))
+	require.Equal(t, "hello-world.txt", name)
+}
+
+func TestNoteFilenameFunctionRejectsEmptyTitle(t *testing.T) {
+	result, err := callNoteFilename(t, `[""]`)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "at least one letter or digit")
+	require.Nil(t, result)
+}
+
+func TestNoteFilenameFunctionRejectsTitleWithoutLettersOrDigits(t *testing.T) {
+	result, err := callNoteFilename(t, `["!!!"]`)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "at least one letter or digit")
+	require.Nil(t, result)
+}
+
+func TestFunctionsOffersNoteFilenameWithItsSignature(t *testing.T) {
+	provider := providers.NewNoteProvider(mocks.NewMockFiles(t))
+
+	fn, err := provider.Functions().Get("note_filename")
+	require.NoError(t, err)
+
+	signature := fn.Signature()
+
+	require.Len(t, signature.Params, 1)
+	require.Equal(t, `"string"`, string(signature.Params[0].Type))
+	require.Nil(t, signature.Variadic)
+	require.Equal(t, `"string"`, string(signature.Return))
+}
+
+func TestFunctionsRejectsUnknownName(t *testing.T) {
+	provider := providers.NewNoteProvider(mocks.NewMockFiles(t))
+
+	fn, err := provider.Functions().Get("nope")
+
+	require.Error(t, err)
+	require.Nil(t, fn)
 }
