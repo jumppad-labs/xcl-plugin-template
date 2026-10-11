@@ -14,6 +14,8 @@ import (
 	"io/fs"
 	"path/filepath"
 	"strconv"
+	"strings"
+	"unicode"
 
 	"github.com/jumppad-labs/xcl/entity"
 	"github.com/jumppad-labs/xcl/logger"
@@ -33,19 +35,27 @@ var ReplaceSettings = []entity.Path{
 }
 
 // NoteProvider writes, reads, updates and removes the file of a notes "note"
-// block through the files client it was given.
+// block through the files client it was given, and offers the function
+// note_filename to configuration.
 type NoteProvider struct {
 	plugins.DefaultChanged[*entities.Note]
 
-	files files.Files
+	files     files.Files
+	functions plugins.ProviderFunctions
 }
 
 var _ plugins.ResourceProvider[*entities.Note] = (*NoteProvider)(nil)
 
 // NewNoteProvider returns the provider for notes "note" blocks, which works on
-// files only through filesClient.
+// files only through filesClient. The functions it offers are built once
+// here, so Functions only returns them.
 func NewNoteProvider(filesClient files.Files) *NoteProvider {
-	return &NoteProvider{files: filesClient}
+	return &NoteProvider{
+		files: filesClient,
+		functions: plugins.NewFunctions(map[string]plugins.ProviderFunction{
+			"note_filename": mustFunction(noteFilename),
+		}),
+	}
 }
 
 // Init logs that the provider is ready, it needs nothing else.
@@ -183,9 +193,13 @@ func (p *NoteProvider) Destroy(ctx context.Context, note *entities.Note, force b
 	return nil
 }
 
-// Functions returns nil, the provider offers no functions.
+// Functions returns the functions the provider offers to configuration:
+// note_filename(title), which turns a title into a safe file name, so a
+// note can be written as name = note_filename("My Greeting"). A function is
+// evaluated while the configuration is read, so Create only ever sees the
+// resulting name.
 func (p *NoteProvider) Functions() plugins.ProviderFunctions {
-	return nil
+	return p.functions
 }
 
 // fileMode returns the permissions an octal mode string names, defaultMode
@@ -205,6 +219,50 @@ func fileMode(mode string) (fs.FileMode, error) {
 
 // defaultMode is the permissions of a note that sets no mode.
 const defaultMode fs.FileMode = 0o644
+
+// noteFilename is the Go func behind note_filename: it lower-cases title,
+// replaces every run of characters that are not letters or digits with one
+// dash, and adds the .txt extension, so "My Greeting" becomes
+// "my-greeting.txt". An empty title, or one with no letters or digits, is an
+// error, which reaches the configuration author with this message.
+func noteFilename(title string) (string, error) {
+	var name strings.Builder
+	dash := false
+
+	for _, r := range strings.ToLower(title) {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			name.WriteRune(r)
+			dash = false
+			continue
+		}
+
+		if name.Len() > 0 && !dash {
+			name.WriteByte('-')
+			dash = true
+		}
+	}
+
+	slug := strings.TrimSuffix(name.String(), "-")
+	if slug == "" {
+		return "", fmt.Errorf("a note title needs at least one letter or digit, got %q", title)
+	}
+
+	return slug + ".txt", nil
+}
+
+// mustFunction wraps fn, a Go func with string, bool, number, slice or
+// string-keyed map parameters that returns a result and an error, as a
+// function configuration can call. A func of another shape is a programmer
+// error, found as soon as the provider is built, so it panics naming the
+// problem.
+func mustFunction(fn any) plugins.ProviderFunction {
+	function, err := plugins.NewFunction(fn)
+	if err != nil {
+		panic(fmt.Sprintf("providers: cannot offer function: %s", err))
+	}
+
+	return function
+}
 
 // contentSetting and modeSetting are the settings Update acts on.
 var (

@@ -219,6 +219,51 @@ To add a resource, for example a `notes "folder"`:
    `examples/` and an `e2e` test that applies it, plans with no changes and
    destroys it.
 
+## Add a function
+
+A provider can offer functions that configuration calls by their bare
+names, the way it calls a builtin such as `upper`. The note provider offers
+`note_filename`, which the sample uses:
+
+```hcl
+notes "note" "greeting" {
+  directory = variable.directory
+  name      = note_filename("Greeting")   # greeting.txt
+  content   = "Hello from xcl"
+}
+```
+
+To add one of your own:
+
+1. **Write the func.** A plain Go func that takes `string`, `bool` or
+   number parameters, or slices and string-keyed maps of those, and returns
+   a result of such a type and an `error`. It is not variadic. Put it with
+   the provider's unexported helpers, as `noteFilename` is in
+   `providers/note.go`.
+2. **Wrap it.** `plugins.NewFunction(fn)` turns it into a
+   `plugins.ProviderFunction`; it returns an error for a func of another
+   shape, which is a programmer error, so the template's `mustFunction`
+   panics on it when the provider is built.
+3. **Offer it.** Build the set once in the provider's constructor with
+   `plugins.NewFunctions(map[string]plugins.ProviderFunction{"note_filename": ...})`
+   and return it from `Functions`, the provider's last method. A provider
+   that offers none returns nil.
+4. **Unit test it.** Call the func directly, one test per rule, keeping the
+   error case in its own test, as `providers/note_test.go` does for
+   `note_filename`.
+5. **Call it from configuration.** Use it in a sample under `examples/` and
+   assert the applied value in the `e2e` tests, in-process and as a
+   separate program; the value reaches the provider as a plain value,
+   `Create` never sees the call.
+
+Names are not namespaced and are shared with xcl's builtins, the
+application's own functions and every other loaded plugin: a name already
+in use is reported with an `xcl.FunctionNameClashError` naming both sources
+when the plugin loads, and two providers of one plugin offering the same
+name fail the plugin's `Init`. Arguments and results cross the plugin
+boundary as JSON, converted to and from the func's Go types, so a list
+literal reaches a `[]string` parameter as a slice.
+
 ## Checks
 
 ```shell

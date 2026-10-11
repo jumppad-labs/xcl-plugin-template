@@ -37,6 +37,20 @@ notes "note" "greeting" {
 }
 `
 
+// untitledNote is a configuration whose note names its file with
+// note_filename called on an empty title, which the function rejects
+const untitledNote = `
+variable "directory" {
+  default = "./out"
+}
+
+notes "note" "greeting" {
+  directory = variable.directory
+  name      = note_filename("")
+  content   = "Hello from xcl"
+}
+`
+
 // applyBasicExampleExternally applies the sample configuration through the
 // plugin program, keeping state in stateDir and writing notes to outDir. What
 // it applied is destroyed when the test ends.
