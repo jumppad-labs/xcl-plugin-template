@@ -304,7 +304,7 @@ c, err := xcl.NewConfig(xcl.WithRegistry(gh))
 ```
 
 `publicKey` is the armoured public key you published. See
-[Installing plugins from GitHub](https://github.com/jumppad-labs/xcl#installing-plugins-from-github)
+[Installing plugins from GitHub](https://xcl.dev/github-registry/)
 for pinning, private repositories and the cache.
 
 ## Verifying releases
