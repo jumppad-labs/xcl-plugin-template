@@ -198,7 +198,9 @@ To add a resource, for example a `notes "folder"`:
 1. **Entity.** Add `entities/folder.go` with the block type: a struct
    embedding `types.ResourceBase` with `xcl:",remain"`, its settings and its
    computed values (`xcl:"<name>,optional,computed"`). Use plain field types,
-   and import nothing from the rest of the plugin.
+   and import nothing from the rest of the plugin. A plugin's types always
+   embed `types.ResourceBase`: the plain structs an application can declare
+   on its own registry are not served by plugins.
 2. **Client.** If it needs a backend the plugin does not have yet, add a
    package under `client/<backend>/` with a narrow interface holding only the
    calls the provider will make, and its real implementation. Return the
