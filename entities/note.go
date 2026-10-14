@@ -17,7 +17,9 @@ import "github.com/jumppad-labs/xcl/types"
 //	  content   = "Hello from xcl"
 //	}
 type Note struct {
-	types.ResourceBase `xcl:",remain"`
+	// Meta is the block's metadata, filled by xcl: Meta.Name is its label,
+	// "greeting" above, and Meta.ID its address
+	Meta types.Meta
 
 	// Directory is the directory the note is written to. Changing it moves
 	// the file, so it needs a replace.
