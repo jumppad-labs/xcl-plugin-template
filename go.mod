@@ -3,7 +3,7 @@ module github.com/jumppad-labs/xcl-plugin-template
 go 1.25.0
 
 require (
-	github.com/jumppad-labs/xcl v0.8.0
+	github.com/jumppad-labs/xcl v0.9.0
 	github.com/stretchr/testify v1.11.1
 )
 
