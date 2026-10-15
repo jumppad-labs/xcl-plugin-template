@@ -23,9 +23,7 @@ import (
 
 func testNote() *entities.Note {
 	return &entities.Note{
-		ResourceBase: types.ResourceBase{
-			Meta: types.Meta{Name: "greeting"},
-		},
+		Meta:      types.Meta{Name: "greeting"},
 		Directory: "dir",
 		Name:      "name.txt",
 		Content:   "hello",

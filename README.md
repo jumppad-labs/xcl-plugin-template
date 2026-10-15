@@ -195,12 +195,14 @@ calls those changes need, so a lookup such as `Stat` fails the test.
 
 To add a resource, for example a `notes "folder"`:
 
-1. **Entity.** Add `entities/folder.go` with the block type: a struct
-   embedding `types.ResourceBase` with `xcl:",remain"`, its settings and its
-   computed values (`xcl:"<name>,optional,computed"`). Use plain field types,
-   and import nothing from the rest of the plugin. A plugin's types always
-   embed `types.ResourceBase`: the plain structs an application can declare
-   on its own registry are not served by plugins.
+1. **Entity.** Add `entities/folder.go` with the block type: a plain struct
+   with its settings, its computed values (`xcl:"<name>,optional,computed"`),
+   and how it reads its label: a `Meta types.Meta` field, as `Note` has, whose
+   `Meta.Name` is the label and `Meta.ID` the address, or a label field
+   (`xcl:"<name>,label"`), two for a type with a subtype. A type with neither
+   is a singleton, written without labels, `notes { … }`, and takes no
+   subtype. Use plain field types, and import nothing from the rest of the
+   plugin.
 2. **Client.** If it needs a backend the plugin does not have yet, add a
    package under `client/<backend>/` with a narrow interface holding only the
    calls the provider will make, and its real implementation. Return the
